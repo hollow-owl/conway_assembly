@@ -168,6 +168,25 @@ printLF:
     pop eax
     pop eax
     ret
+
+; void sleepN(eax seconds)
+sleepN:
+    push ecx
+    push ebx
+    push 0
+    push eax
+
+    mov ecx, 0      ; rem time
+    mov ebx, esp    ; *timespec rqtp
+    mov eax, 0xa2   ; nanosleep(*timespec rqtp, *timespec rem)
+    int 80h
+
+    pop eax
+    pop ebx     ; pop 0 off stack
+    pop ebx
+    pop ecx
+    ret
+    
 ; void exit
 quit:
     mov ebx, 0

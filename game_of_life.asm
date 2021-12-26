@@ -81,11 +81,14 @@ main:
     call evolve
     call printLF 
     call printLF
-    pop ecx
-    dec ecx
-    cmp ecx,0
-    jne main
-    ; jmp main
+
+    push eax
+    mov eax, 1
+    call sleepN
+    pop eax
+
+    jmp main
+
 exit:
     call quit
 
@@ -171,7 +174,6 @@ evolve:
     inc dword [ebp-12]
     jmp .for_y
 .end_y:
-    call switch_maps
     ; xchg old_map, new_map
     mov eax, [ebp-8]
     ; epilogue
@@ -319,7 +321,7 @@ set_new:
     jmp .epilogue
 .dead:                  ; else
     xor edx, edx        ; all 32 bit edx = 0
-    mov edx, 0x23   ; '.'
+    mov edx, 0x2e   ; '.'
 .epilogue:              
     mov eax, [ebp-8]
 
@@ -331,7 +333,4 @@ set_new:
     pop ecx
 
     pop eax
-    ret
-
-switch_maps:
     ret

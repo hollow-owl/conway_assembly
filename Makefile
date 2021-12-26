@@ -6,7 +6,7 @@ RM=rm -rf
 SOURCES=$(wildcard *.asm)
 OBJECTS=$(SOURCES:.asm=.o)
 TARGET=game_of_life
-ARGS=5 4
+ARGS=30 30
 %.o: %.asm
 	$(AS) $(ASFLAGS) $^
 
