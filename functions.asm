@@ -158,6 +158,16 @@ sprintLF:
     pop eax
     pop eax
     ret
+
+printLF:
+    push eax
+    mov eax, 0Ah
+    push eax
+    mov eax, esp
+    call sprint
+    pop eax
+    pop eax
+    ret
 ; void exit
 quit:
     mov ebx, 0

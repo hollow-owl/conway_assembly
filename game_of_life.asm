@@ -73,10 +73,19 @@ _start:
     jmp .setupLoop
 .setupFinish:
     mov eax,[map2]
-    jmp main
+    ; jmp main
+    mov ecx, 10
 main:
+    push ecx
     call displayMap
     call evolve
+    call printLF 
+    call printLF
+    pop ecx
+    dec ecx
+    cmp ecx,0
+    jne main
+    ; jmp main
 exit:
     call quit
 
@@ -164,6 +173,7 @@ evolve:
 .end_y:
     call switch_maps
     ; xchg old_map, new_map
+    mov eax, [ebp-8]
     ; epilogue
     add esp, 16
     pop ebp
@@ -191,58 +201,58 @@ neighbors:
     ; 3 | 4 | 5
     ; 6 | 7 | 8
 
-    call is_alive   ; 4
-    jne .L1
-    ; inc dword [ebp-4]
-    inc dword [ebp]
-.L1:
+;     call is_alive   ; 4
+;     jne .L1
+;     ; inc dword [ebp-4]
+;     inc dword [esp]
+; .L1:
     dec ebx
     call is_alive   ; 3
     jne .L2
     ; inc dword [ebp-4]
-    inc dword [ebp]
+    inc dword [esp]
 .L2:
     dec ecx
     call is_alive   ; 0
     jne .L3
     ; inc dword [ebp-4]
-    inc dword [ebp]
+    inc dword [esp]
 .L3:
     inc ebx
     call is_alive   ; 1
     jne .L4
     ; inc dword [ebp-4]
-    inc dword [ebp]
+    inc dword [esp]
 .L4:
     inc ebx
     call is_alive   ; 2
     jne .L5
     ; inc dword [ebp-4]
-    inc dword [ebp]
+    inc dword [esp]
 .L5:
     inc ecx
     call is_alive   ; 5
     jne .L6
     ; inc dword [ebp-4]
-    inc dword [ebp]
+    inc dword [esp]
 .L6:
     inc ecx
     call is_alive   ; 8
     jne .L7
     ; inc dword [ebp-4]
-    inc dword [ebp]
+    inc dword [esp]
 .L7:
     dec ebx
     call is_alive   ; 7
     jne .L8
     ; inc dword [ebp-4]
-    inc dword [ebp]
+    inc dword [esp]
 .L8:
     dec ebx
     call is_alive   ; 6
     jne .L9
     ; inc dword [ebp-4]
-    inc dword [ebp]
+    inc dword [esp]
 .L9:
     ; reset x, y
     inc ebx
@@ -258,12 +268,25 @@ is_alive:
     push ecx
     push ebx
 
+    call get_offset
+    cmp byte[eax+ebx], 0x23       ; [ebx] cmp '#'
+    pop ebx
+    pop ecx
+    pop edx
+    ret
+
+; get_cell(eax map, ebx x, ecx y) -> ebx offset
+; changes ebx ecx
+
+get_offset:
+    push edx
     push eax
+    xor edx, edx
 
     mov eax, ecx
     mov ecx, [height]
     add eax, ecx
-    div ecx             ; (y+[height])%[height]
+    idiv ecx             ; (y+[height])%[height]
     mov eax, edx
     mul ecx
     mov ecx, eax        ; ecx = [height] * (y+[height])%[height]
@@ -271,18 +294,43 @@ is_alive:
     mov eax, ebx
     mov ebx, [width]
     add eax, ebx
-    div ebx
+    idiv ebx
     mov ebx, edx        ; ebx = (x+[width])%[width]
 
     pop eax
+    pop edx
     add ebx, ecx        ; ebx =  (map + (x+[width])%[width] + [height]*(ecx+[height])%[height])
-    cmp byte[eax+ebx], 0x23       ; [ebx] cmp '#'
+    ret
+; set_new(eax old_map, ebx x, ecx y, edx n, [ebp-8] new_map) void
+; changes edx
+set_new:
+    push eax
+
+    cmp edx, 3          ; n == 3
+    je .alive
+
+    cmp edx, 2          ; n == 2 && map[x][y] = '#'
+    jne .dead
+    call is_alive
+    jne .dead
+.alive:                 ; if (n==3 || (n==2 && map[x][y] == '#'))
+    xor edx, edx        ; all 32 bit edx = 0
+    mov edx, 0x23   ; '#''
+    jmp .epilogue
+.dead:                  ; else
+    xor edx, edx        ; all 32 bit edx = 0
+    mov edx, 0x23   ; '.'
+.epilogue:              
+    mov eax, [ebp-8]
+
+    push ecx            ; new_map[x][y] = edx
+    push ebx
+    call get_offset
+    mov byte[eax+ebx], dl   ; lower 8 bits of edx
     pop ebx
     pop ecx
-    pop edx
-    ret
 
-set_new:
+    pop eax
     ret
 
 switch_maps:

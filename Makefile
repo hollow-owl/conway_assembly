@@ -17,7 +17,7 @@ build: $(TARGET).o
 	$(LD) $(LDFLAGS) $(TARGET).o -o $(TARGET).out
 
 run: build
-	./$(TARGET).out
+	./$(TARGET).out $(ARGS)
 
 debug: build
 	gdb --args ./$(TARGET).out $(ARGS)
