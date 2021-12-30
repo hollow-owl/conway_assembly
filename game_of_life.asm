@@ -1,7 +1,8 @@
 %include 'functions.asm'
 section .data
 msg:    db  'Hello World!', 0h
-
+alive_cell: equ 0x23    ; '#'
+dead_cell:  equ 0x2e    ; '.'
 section .bss
 height: resb 4
 width:  resb 4
@@ -12,16 +13,15 @@ global _start
 
 ; initialize vector
 ; run game
-;; copy map
 ;; loop through each cell and apply rules
 ;; display map
 ;; sleep for x seconds
 ;; do it again
 _start:
-    pop ecx         ; num of args
-    pop edx         ; program name
+    pop ecx             ; num of args
+    pop edx             ; program name
     dec ecx
-    cmp ecx, 2      ; need two args
+    cmp ecx, 2          ; need two args
     jne exit
 
     pop eax             ; gets width
@@ -39,7 +39,7 @@ _start:
     sub esp, eax
     mov [map1], esp     ; first map
     sub esp, eax
-    mov [map2], esp      ; second map
+    mov [map2], esp     ; second map
 
     ; fill map with random bytes
     mov ebx, 2
@@ -64,16 +64,15 @@ _start:
 
     cmp bl, 0x22
     jl  .setupAlive
-    mov byte[esp+ecx], 0x2e ; map[i] = '.'
+    mov byte[esp+ecx], dead_cell    ; map[i] = '.'
     jmp .setupEnd
 .setupAlive:
-    mov byte[esp+ecx], 0x23 ; map[i] = '#'
+    mov byte[esp+ecx], alive_cell   ; map[i] = '#'
 .setupEnd:
     inc ecx
     jmp .setupLoop
 .setupFinish:
     mov eax,[map2]
-    ; jmp main
     mov ecx, 10
 main:
     push ecx
@@ -161,7 +160,7 @@ evolve:
     ;   neighbors(map, x, y)
     mov ecx, [ebp-12]   ; y
     mov ebx, [ebp-16]   ; x
-                        ; old_map
+                        ; eax old_map
     call neighbors
 	; 	new[y][x] = (n == 3 || (n == 2 && univ[y][x]));
     call set_new
@@ -174,7 +173,6 @@ evolve:
     inc dword [ebp-12]
     jmp .for_y
 .end_y:
-    ; xchg old_map, new_map
     mov eax, [ebp-8]
     ; epilogue
     add esp, 16
@@ -203,63 +201,49 @@ neighbors:
     ; 3 | 4 | 5
     ; 6 | 7 | 8
 
-;     call is_alive   ; 4
-;     jne .L1
-;     ; inc dword [ebp-4]
-;     inc dword [esp]
-; .L1:
     dec ebx
     call is_alive   ; 3
     jne .L2
-    ; inc dword [ebp-4]
     inc dword [esp]
 .L2:
     dec ecx
     call is_alive   ; 0
     jne .L3
-    ; inc dword [ebp-4]
     inc dword [esp]
 .L3:
     inc ebx
     call is_alive   ; 1
     jne .L4
-    ; inc dword [ebp-4]
     inc dword [esp]
 .L4:
     inc ebx
     call is_alive   ; 2
     jne .L5
-    ; inc dword [ebp-4]
     inc dword [esp]
 .L5:
     inc ecx
     call is_alive   ; 5
     jne .L6
-    ; inc dword [ebp-4]
     inc dword [esp]
 .L6:
     inc ecx
     call is_alive   ; 8
     jne .L7
-    ; inc dword [ebp-4]
     inc dword [esp]
 .L7:
     dec ebx
     call is_alive   ; 7
     jne .L8
-    ; inc dword [ebp-4]
     inc dword [esp]
 .L8:
     dec ebx
     call is_alive   ; 6
     jne .L9
-    ; inc dword [ebp-4]
     inc dword [esp]
 .L9:
     ; reset x, y
     inc ebx
     dec ecx
-    ; mov edx, [ebp-4]
     pop edx
     ret
 
@@ -271,7 +255,7 @@ is_alive:
     push ebx
 
     call get_offset
-    cmp byte[eax+ebx], 0x23       ; [ebx] cmp '#'
+    cmp byte[eax+ebx], alive_cell   ; [ebx] cmp '#'
     pop ebx
     pop ecx
     pop edx
@@ -279,7 +263,6 @@ is_alive:
 
 ; get_cell(eax map, ebx x, ecx y) -> ebx offset
 ; changes ebx ecx
-
 get_offset:
     push edx
     push eax
@@ -288,7 +271,7 @@ get_offset:
     mov eax, ecx
     mov ecx, [height]
     add eax, ecx
-    idiv ecx             ; (y+[height])%[height]
+    idiv ecx            ; (y+[height])%[height]
     mov eax, edx
     mul ecx
     mov ecx, eax        ; ecx = [height] * (y+[height])%[height]
@@ -303,29 +286,30 @@ get_offset:
     pop edx
     add ebx, ecx        ; ebx =  (map + (x+[width])%[width] + [height]*(ecx+[height])%[height])
     ret
+
 ; set_new(eax old_map, ebx x, ecx y, edx n, [ebp-8] new_map) void
 ; changes edx
 set_new:
     push eax
 
-    cmp edx, 3          ; n == 3
+    cmp edx, 3              ; n == 3
     je .alive
 
-    cmp edx, 2          ; n == 2 && map[x][y] = '#'
+    cmp edx, 2              ; n == 2 && map[x][y] = '#'
     jne .dead
     call is_alive
     jne .dead
-.alive:                 ; if (n==3 || (n==2 && map[x][y] == '#'))
-    xor edx, edx        ; all 32 bit edx = 0
-    mov edx, 0x23   ; '#''
+.alive:                     ; if (n==3 || (n==2 && map[x][y] == '#'))
+    xor edx, edx            ; all 32 bit edx = 0
+    mov edx, alive_cell     ; '#''
     jmp .epilogue
-.dead:                  ; else
-    xor edx, edx        ; all 32 bit edx = 0
-    mov edx, 0x2e   ; '.'
+.dead:                      ; else
+    xor edx, edx            ; all 32 bit edx = 0
+    mov edx, dead_cell      ; '.'
 .epilogue:              
     mov eax, [ebp-8]
 
-    push ecx            ; new_map[x][y] = edx
+    push ecx                ; new_map[x][y] = edx
     push ebx
     call get_offset
     mov byte[eax+ebx], dl   ; lower 8 bits of edx
